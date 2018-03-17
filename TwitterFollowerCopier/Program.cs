@@ -9,13 +9,20 @@ using TweetSharp;
 
 namespace TwitterFollowerCopier
 {
+    /// <summary>
+    /// 15 dkda bir 15 requeste inizn veriyor twitter, 300 300 takip ettigim kulanıcıları çekiyorum.
+    /// </summary>
     class Program
     {
+        static DirectoryInfo desktopFolder => new DirectoryInfo(Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory));
+        static DirectoryInfo folder = desktopFolder.GetDirectories("TwitterFollowerCopier").FirstOrDefault()?? new DirectoryInfo(Path.Combine(desktopFolder.FullName, "TwitterFollowerCopier"));
+        static FileInfo csv => new FileInfo(Path.Combine(folder.FullName, "users.csv"));
+        static long? lastCursor = -1;
+
         static void Main(string[] args)
         {
-            var oldAccount = "O_Kahia";
-            var newAccount = "O_Kahyaoglu";
-
+            if (!folder.Exists)
+                folder.Create();
             OAuthAccessToken access;
             var service = Authentication(out access);
             var users = FindAllFollowing(service, access);
@@ -24,17 +31,16 @@ namespace TwitterFollowerCopier
 
         private static void SaveAllMembersInTextFile(Dictionary<long, string> users)
         {
-            var desktopFolder = new DirectoryInfo( Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory));
-            var folder = desktopFolder.CreateSubdirectory("TwitterFollowerCopier");
             var str = string.Join(Environment.NewLine, users.Select(u => $"{u.Key},{u.Value}"));
-            var csv = new FileInfo(Path.Combine(folder.FullName, "users.csv"));
+            str += Environment.NewLine + lastCursor;
             File.WriteAllText(csv.FullName, str);
             Console.WriteLine("Saved users to path " + csv.FullName);
         }
 
         private static Dictionary<long, string> FindAllFollowing(TwitterService service, OAuthAccessToken access)
         {
-            long? cursor = -1;
+            var pastFetches = csv.Exists ? File.ReadAllLines(csv.FullName) : null;
+            lastCursor = Convert.ToInt64(pastFetches?.LastOrDefault() ?? "-1");
             var counter = 1;
             var users = new Dictionary<long, string>();
             while (true)
@@ -43,7 +49,7 @@ namespace TwitterFollowerCopier
                 {
                     IncludeUserEntities = false,
                     SkipStatus = true,
-                    Cursor = cursor,
+                    Cursor = lastCursor,
                     UserId = access.UserId
                 });
                 if (following == null)
@@ -52,11 +58,11 @@ namespace TwitterFollowerCopier
                     break;
                 }
 
-                cursor = following.NextCursor;
+                lastCursor = following.NextCursor;
                 if (following.Count == 0)
                     break;
-                following.ForEach(f => users.Add(f.Id, f.Name));
-                following.ForEach(f => Console.WriteLine($"{counter++:D5}: {f.Name}"));
+                following.ForEach(f => users.Add(f.Id, f.ScreenName));
+                following.ForEach(f => Console.WriteLine($"{counter++:D5}: {f.ScreenName}"));
             }
 
             return users;
