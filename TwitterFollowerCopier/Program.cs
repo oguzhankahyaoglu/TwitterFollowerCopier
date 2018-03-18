@@ -31,9 +31,9 @@ namespace TwitterFollowerCopier
 
         private static void SaveAllMembersInTextFile(Dictionary<long, string> users)
         {
-            var str = string.Join(Environment.NewLine, users.Select(u => $"{u.Key},{u.Value}"));
+            var str = string.Join(Environment.NewLine, users.Select(u => $"{u.Key};{u.Value}"));
             str += Environment.NewLine + lastCursor;
-            File.WriteAllText(csv.FullName, str);
+            File.AppendAllText(csv.FullName, str);
             Console.WriteLine("Saved users to path " + csv.FullName);
         }
 
